@@ -5,7 +5,7 @@
  */
 
 #import "TiModule.h"
-#import <FacebookSDK/FacebookSDK.h>
+#import "FacebookSDK.h"
 
 @protocol TiFacebookStateListener
 @required
