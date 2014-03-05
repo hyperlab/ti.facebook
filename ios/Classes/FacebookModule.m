@@ -397,57 +397,77 @@ BOOL skipMeCall = NO;
         
         NSDictionary* params = [args objectAtIndex:0];
         NSString* urlStr = [params objectForKey:@"url"];
-        NSURL* linkUrl = [NSURL URLWithString:urlStr];
-        NSString* namespaceObject = [params objectForKey:@"namespaceObject"];
-        NSString* namespaceAction = [params objectForKey:@"namespaceAction"];
-        NSString* objectName = [params objectForKey:@"objectName"];
-        NSString* placeId = [params objectForKey:@"placeId"];
-        NSString* imageUrl = [params objectForKey:@"imageUrl"];
-        NSString* openGraphTitle = [params objectForKey:@"title"];
-        NSString* openGraphDescription = [params objectForKey:@"description"];
+        NSString* actionType = [params objectForKey:@"action"];
         
-        TiThreadPerformOnMainThread(^{
-            if (objectName == nil || namespaceObject == nil || namespaceAction == nil){
-                [FBDialogs presentShareDialogWithLink:linkUrl
-                    handler:^(FBAppCall *call, NSDictionary *results, NSError *error) {
-                    if(error) {
-                        NSLog(@"[DEBUG] Facebook share error %@", error.description);
-                    } else {
-                        NSLog(@"Facebook share success!");
+        if (actionType == nil && urlStr != nil) {
+            [self performSelectorOnMainThread:@selector(_presentShareDialogWithUrl:) withObject:[NSURL URLWithString:urlStr] waitUntilDone:NO];
+        } else if (actionType != nil){
+            NSString* previewProperty = [params objectForKey:@"previewProperty"];
+            NSDictionary* properties = [params objectForKey:@"properties"];
+            
+            NSLog(@"[DEBUG] OpenGraph Action \"%@\" with properties: %@", actionType, properties);
+
+            id<FBOpenGraphAction> openGraphAction = (id<FBOpenGraphAction>)[FBGraphObject openGraphActionForPost];
+            
+            NSEnumerator *enumerator = [properties keyEnumerator];
+            id key;
+            id tmp;
+            
+            while ((key = [enumerator nextObject])) {
+                tmp = [properties objectForKey:key];
+                
+                if ([tmp isKindOfClass:[NSDictionary class]]) {
+                    NSMutableDictionary<FBOpenGraphObject> *openGraphObject = [FBGraphObject openGraphObjectForPost];
+                    
+                    NSEnumerator *innerEnumerator = [tmp keyEnumerator];
+                    id innerKey;
+                    
+                    while ((innerKey = [innerEnumerator nextObject])) {
+                        [openGraphObject setObject:[tmp objectForKey:innerKey] forKey:innerKey];
                     }
-                }];
-            } else {
-                id<FBGraphObject> openGraphObject =
-                [FBGraphObject openGraphObjectForPostWithType:namespaceObject
-                        title:openGraphTitle
-                        image:imageUrl
-                        url:urlStr
-                        description:openGraphDescription];
-                
-                id<FBOpenGraphAction> openGraphAction = (id<FBOpenGraphAction>)[FBGraphObject graphObject];
-                [openGraphAction setObject:openGraphObject forKey:objectName];
-                
-                if (placeId != nil){
-                    id<FBGraphPlace> place = (id<FBGraphPlace>)[FBGraphObject graphObject];
-                    [place setId:placeId];
-                
-                    [openGraphAction setPlace:place];
+                    
+                    [openGraphAction setObject:openGraphObject forKey:key];
+                } else {
+                    [openGraphAction setObject:tmp forKey:key];
                 }
-                
-                [FBDialogs presentShareDialogWithOpenGraphAction:openGraphAction
-                        actionType:namespaceAction
-                        previewPropertyName:objectName
-                        handler:^(FBAppCall *call, NSDictionary *results, NSError *error) {
-                            if(error) {
-                                NSLog(@"Error: %@", error.description);
-                            } else {
-                                NSLog(@"Success!");
-                            }
-                            }];
             }
-        }, NO);
+            
+            [self performSelectorOnMainThread:@selector(_presentShareDialogWithGraphActionArguments:)
+                                   withObject:[NSDictionary dictionaryWithObjectsAndKeys:
+                                               openGraphAction, @"action",
+                                               actionType, @"type",
+                                               previewProperty, @"preview", nil]
+                                waitUntilDone:NO];
+        }
     }
 }
+
+-(void)_presentShareDialogWithUrl:(NSURL *)url
+{
+    [FBDialogs presentShareDialogWithLink:url
+        handler:^(FBAppCall *call, NSDictionary *results, NSError *error) {
+          if(error) {
+              NSLog(@"[DEBUG] Facebook share error %@", error.description);
+          } else {
+              NSLog(@"Facebook share success!");
+          }
+        }];
+}
+
+-(void)_presentShareDialogWithGraphActionArguments:(id)args
+{
+    [FBDialogs presentShareDialogWithOpenGraphAction:[args objectForKey:@"action"]
+                                          actionType:[args objectForKey:@"type"]
+                                 previewPropertyName:[args objectForKey:@"preview"]
+                                             handler:^(FBAppCall *call, NSDictionary *results, NSError *error) {
+                                                 if(error) {
+                                                     NSLog(@"Error: %@", error.description);
+                                                 } else {
+                                                     NSLog(@"Success!");
+                                                 }
+                                             }];
+}
+
 
 /**
  * JS example:
