@@ -92,10 +92,22 @@ Use it! You don't need permissions, you don't even need the user to be logged in
 *	To post a graph action call:
 
 ```javascript
-fb.share({url: someUrl, namespaceObject: 'myAppnameSpace:graphObject', objectName: 'graphObject', imageUrl: someImageUrl, 
-		title: aTitle, description: blahBlah, namespaceAction: 'myAppnameSpace:actionType', placeId: facebookPlaceId}`
+fb.share({
+  action: 'namespace:action'
+  previewProperty: 'graphObject'
+  properties:
+    graphObject:
+      type: 'namepace:object'
+      title: 'Object title'
+      description: 'Object desc'
+      url: 'http://example.com'
+      image: 'http://example.com/image.png'
+    anotherObject:
+      customProperty: 'value'
+      // etc
+});
 ```
-For the graph action apparently only placeId is optional.
+You can add or remove Open Graph properties as needed to match your own configuration. 
 
 requestNewReadPermissions
 -------------------------
